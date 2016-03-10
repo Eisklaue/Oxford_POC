@@ -33,6 +33,7 @@ namespace Oxford_PoC
         //Mikrofon als Soundquelle
         static MicrophoneRecognitionClient micClient;
 
+        //Eventhandler für Finale antwort von Microsoft
         static AutoResetEvent FinalResponseEvent;
 
         static void Main(string[] args)
@@ -42,36 +43,28 @@ namespace Oxford_PoC
             //Response Event von MAIS
             FinalResponseEvent = new AutoResetEvent(false);
 
-            Console.WriteLine("Was wollen Sie tun?\n1. ShortPhrase Recognition\n2. LongPhrase Recognition\nAuswahl: ");
+            //Starte das Logging für Shortphase Übertragungen
+            LogRecognitionStart("microphone", recoLanguage, SpeechRecognitionMode.ShortPhrase);
 
-            ConsoleKeyInfo input = Console.ReadKey();
-
-            switch (input.KeyChar)
+            //Erstelle den Mic Client wenn er noch nicht vorhanden ist
+            if (micClient == null)
             {
-                //Short phrase recongition verwendet das Mikrophone
-                case ('1'):
-                    Console.WriteLine("Short");
-                    LogRecognitionStart("microphone", recoLanguage, SpeechRecognitionMode.ShortPhrase);
-
-                    if (micClient == null)
-                    {
-                        micClient = CreateMicrophoneRecoClient(SpeechRecognitionMode.ShortPhrase, recoLanguage, SubscriptionKey);
-                    }
-                    micClient.StartMicAndRecognition();
-
-                    break;
-                case ('2'):
-                    Console.WriteLine("Long");
-                    break;
+                //Mic Client für ShortPhrase in Deutsch mit SubscriptionKey
+                micClient = CreateMicrophoneRecoClient(SpeechRecognitionMode.ShortPhrase, recoLanguage, SubscriptionKey);
             }
+            //Starten der Aufnahme
+            micClient.StartMicAndRecognition();
 
         }
 
+        //Einfache Klasse für das starten des Loggings
         static void LogRecognitionStart(string recoSource, string recoLanguage, SpeechRecognitionMode recoMode)
         {
             Console.WriteLine("\n--- Start speech recognition using " + recoSource + " with " + recoMode + " mode in " + recoLanguage + " language ----\n\n");
         }
 
+
+        //Get & Set für den SubscriptionKey
         static string SubscriptionKey
         {
             get
@@ -85,6 +78,7 @@ namespace Oxford_PoC
             }
         }
 
+        //erzeugen des Mic Clients inklusiver der veschiedenen Result EventHandlers
         static MicrophoneRecognitionClient CreateMicrophoneRecoClient(SpeechRecognitionMode recoMode, string language, string subscriptionKey)
         {
             MicrophoneRecognitionClient micClient = SpeechRecognitionServiceFactory.CreateMicrophoneClient(
@@ -92,19 +86,25 @@ namespace Oxford_PoC
                 language,
                 subscriptionKey);
 
-            // Event handlers for speech recognition results
+            // Event handlers für die Spracherkennung Ergebnisse
+            //Mikrofon bereit?
             micClient.OnMicrophoneStatus += OnMicrophoneStatus;
+
+            //Partielle Resultate der Spracherkennung 
             micClient.OnPartialResponseReceived += OnPartialResponseReceivedHandler;
             if (recoMode == SpeechRecognitionMode.ShortPhrase)
             {
+                //Eventhandler für die erkannte Spracherkennung (Bestes Ergebnis)
                 micClient.OnResponseReceived += OnMicShortPhraseResponseReceivedHandler;
             }
 
+            //Fehlerhandler
             micClient.OnConversationError += OnConversationErrorHandler;
 
             return micClient;
         }
 
+        //Eventhandlerausgabe Wenn Aufnahme starten kann
         static void OnMicrophoneStatus(object sender, MicrophoneEventArgs e)
         {
             Console.WriteLine("--- Microphone status change received by OnMicrophoneStatus() ---");
@@ -116,6 +116,7 @@ namespace Oxford_PoC
             Console.WriteLine();
         }
 
+        //Eventhandler für Partielle Ergebnisse empfangen von Microsoft Azure
         static void OnPartialResponseReceivedHandler(object sender, PartialSpeechResponseEventArgs e)
         {
             Console.WriteLine("--- Partial result received by OnPartialResponseReceivedHandler() ---");
@@ -123,27 +124,30 @@ namespace Oxford_PoC
             Console.WriteLine();
         }
 
+        //Eventhandler für Finales Ergebnis (Bestes Ergebnis) und wegwerfen des Mic Clients (Bug?)
         static void OnMicShortPhraseResponseReceivedHandler(object sender, SpeechResponseEventArgs e)
         {
             Console.WriteLine("--- OnMicShortPhraseResponseReceivedHandler ---");
 
             FinalResponseEvent.Set();
 
-            // we got the final result, so it we can end the mic reco.  No need to do this
-            // for dataReco, since we already called endAudio() on it as soon as we were done
-            // sending all the data.
+            // Nachdem erhalt der finalen Antwort können wir die Mikrofonaufnahme beenden
             micClient.EndMicAndRecognition();
 
-            // BUGBUG: Work around for the issue when cached _micClient cannot be re-used for recognition.
+            // Bug?: Wenn der gechached micClient nicht nochmal für die Verwendung erkannt wird.
             micClient.Dispose();
             micClient = null;
-
+            //Finale Antwort schreiben
             WriteResponseResult(e);
 
         }
-
+        //Methode zum schreiben der Finalen Antwort
         static void WriteResponseResult(SpeechResponseEventArgs e)
         {
+            //Wenn Null dann nichts erkannt/gesprochen
+            //Wenn nicht Null 
+            //e.PhraseResponse[0].Confidence - Wahrscheinlichkeit das das richtige verstanden wurde
+            //e.PhraseResponse[0].DisplayText - Die Wahrscheinlich gesprochenen Worte
             if (e.PhraseResponse.Results.Length == 0)
             {
                 Console.WriteLine("No phrase resonse is available.");
@@ -161,6 +165,7 @@ namespace Oxford_PoC
             }
         }
 
+        //Handler für Fehler
         static void OnConversationErrorHandler(object sender, SpeechErrorEventArgs e)
         {
 
