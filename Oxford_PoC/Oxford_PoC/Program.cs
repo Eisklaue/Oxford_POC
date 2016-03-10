@@ -133,10 +133,7 @@ namespace Oxford_PoC
 
             // Nachdem erhalt der finalen Antwort können wir die Mikrofonaufnahme beenden
             micClient.EndMicAndRecognition();
-
-            // Bug?: Wenn der gechached micClient nicht nochmal für die Verwendung erkannt wird.
-            micClient.Dispose();
-            micClient = null;
+            
             //Finale Antwort schreiben
             WriteResponseResult(e);
 
