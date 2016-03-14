@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Threading;
+using System.Media;
 
 namespace Oxford_PoC
 {
@@ -17,7 +18,7 @@ namespace Oxford_PoC
     {
         static void Main(string[] args)
         {
-            Oxford ox_Client = new Oxford();
+            //Oxford ox_Client = new Oxford();
 
         }
     }
